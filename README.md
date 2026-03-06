@@ -1,3 +1,12 @@
+---
+title: Healthcare RAG Assistant
+emoji: 🏥
+colorFrom: blue
+colorTo: green
+sdk: docker
+pinned: true
+---
+
 # Healthcare RAG — Ask My Docs
 
 A production-grade Retrieval-Augmented Generation system for querying clinical guidelines and public-health documents (WHO, CDC, NIH). Built with **Anthropic Claude**, **ChromaDB**, **BM25 hybrid search**, and **RAGAS evaluation**.
