@@ -154,7 +154,14 @@ class ChromaVectorStore:
     def reset_collection(self) -> None:
         """Delete and recreate the collection. Destructive — use with caution."""
         client = self._get_client()
-        client.delete_collection(self.collection_name)
+        try:
+            client.delete_collection(self.collection_name)
+            logger.warning(f"Collection '{self.collection_name}' dropped")
+        except Exception:
+            # Collection doesn't exist yet (e.g. fresh container) — nothing to drop
+            logger.info(
+                f"Collection '{self.collection_name}' not found; skipping deletion"
+            )
         self._collection = None
         logger.warning(f"Collection '{self.collection_name}' has been reset")
         self._get_collection()
