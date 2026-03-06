@@ -1,0 +1,58 @@
+# ============================================================
+# Healthcare RAG - Ask My Docs
+# Application Settings
+# ============================================================
+
+app:
+  name: "Healthcare RAG - Ask My Docs"
+  version: "1.0.0"
+  log_level: "INFO"
+
+# --- Phase 1: Document Ingestion ---
+ingestion:
+  chunk_size_target: 600      # Target tokens per chunk
+  chunk_size_min: 500         # Minimum acceptable chunk size
+  chunk_size_max: 800         # Maximum acceptable chunk size
+  chunk_overlap: 100          # Overlap tokens between consecutive chunks
+  encoding: "cl100k_base"     # tiktoken encoding (matches Claude/GPT tokenizers)
+  min_chunk_chars: 200        # Discard chunks shorter than this
+
+# --- Embeddings ---
+embeddings:
+  model: "all-mpnet-base-v2"           # Sentence-transformers model
+  batch_size: 32
+  normalize: true                       # L2-normalize vectors for cosine similarity
+  device: "cpu"                         # cpu | cuda | mps
+
+# --- ChromaDB ---
+chromadb:
+  persist_directory: "./data/chroma_db"
+  collection_name: "healthcare_docs"
+  distance_metric: "cosine"            # cosine | l2 | ip
+
+# --- Phase 2: Hybrid Retrieval ---
+retrieval:
+  bm25_top_k: 20                       # Candidates from BM25
+  vector_top_k: 20                     # Candidates from vector search
+  rrf_k: 60                            # RRF constant (higher = less rank sensitivity)
+  final_top_k: 10                      # Chunks passed to reranker
+  # Cross-encoder reranker
+  reranker_model: "cross-encoder/ms-marco-MiniLM-L-6-v2"
+  reranker_top_k: 5                    # Final chunks passed to LLM
+  citation_min_score: 0.0              # Min reranker score to include in context
+
+# --- Phase 1: LLM Generation ---
+generation:
+  model: "claude-opus-4-6"
+  max_tokens: 1500
+  temperature: 0.1                     # Low temp for factual medical responses
+  insufficient_context_token: "INSUFFICIENT_CONTEXT"
+
+# --- Phase 3: Evaluation ---
+evaluation:
+  faithfulness_threshold: 0.75         # RAGAS faithfulness minimum
+  answer_relevancy_threshold: 0.70     # RAGAS answer_relevancy minimum
+  context_precision_threshold: 0.65   # RAGAS context_precision minimum
+  golden_dataset_path: "./data/eval/golden_dataset.json"
+  results_dir: "./data/eval/results"
+  fail_on_regression: true             # CI/CD: fail if metrics drop below thresholds

@@ -1,0 +1,2 @@
+# Place clinical PDFs here (WHO, CDC, NIH guidelines, etc.)
+# Files are excluded from git via .gitignore
