@@ -56,14 +56,13 @@ class PromptManager:
             )
 
         content: str = entry["content"]
-        if variables:
-            try:
-                content = content.format(**variables)
-            except KeyError as exc:
-                raise KeyError(
-                    f"Prompt '{name}' is missing variable {exc}. "
-                    f"Required variables: {self._extract_variables(content)}"
-                ) from exc
+        try:
+            content = content.format(**variables)
+        except KeyError as exc:
+            raise KeyError(
+                f"Prompt '{name}' is missing variable {exc}. "
+                f"Required variables: {self._extract_variables(content)}"
+            ) from exc
 
         return content.strip()
 
