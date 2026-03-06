@@ -1,56 +1,181 @@
 {
   "metadata": {
-    "version": "1.0",
-    "description": "Golden evaluation dataset for Healthcare RAG - Ask My Docs",
-    "total_pairs": 5,
-    "created": "2025-01-01",
-    "notes": "Expand to 50-200 pairs before production evaluation. Each entry must have a human-verified ground_truth answer from the source document."
+    "version": "2.0",
+    "description": "Golden evaluation dataset for Healthcare RAG — 20 clinically verified Q&A pairs drawn from three indexed guidelines: WHO Hypertension, WHO Diabetes, and ADA Standards of Diabetes Care.",
+    "total_pairs": 20,
+    "categories": ["diagnosis", "treatment", "monitoring", "prevention"],
+    "source_documents": [
+      "who_hypertension.pdf  (dsa664.pdf)",
+      "who_diabetes.pdf      (dsa509.pdf)",
+      "ada_standards_diabetes.pdf (dc22s007.pdf)"
+    ],
+    "notes": "should_decline=true means the RAG system is expected to decline the question (topic not covered by indexed documents)."
   },
   "qa_pairs": [
+
     {
       "id": "q001",
-      "question": "What is the recommended first-line treatment for uncomplicated hypertension in adults?",
-      "ground_truth": "According to clinical guidelines, lifestyle modifications including dietary changes (DASH diet), sodium restriction, weight loss, and increased physical activity are the first-line interventions. If lifestyle changes are insufficient, thiazide diuretics, ACE inhibitors, angiotensin receptor blockers (ARBs), or calcium channel blockers are recommended as initial pharmacological therapy.",
-      "source_document": "hypertension_guidelines.pdf",
-      "category": "cardiovascular",
-      "difficulty": "medium",
-      "requires_context": true
+      "question": "What blood pressure level defines hypertension according to WHO guidelines?",
+      "expected_answer": "Hypertension is defined as systolic blood pressure of 140 mmHg or higher, or diastolic blood pressure of 90 mmHg or higher.",
+      "source_document": "who_hypertension.pdf",
+      "category": "diagnosis",
+      "should_decline": false
     },
     {
       "id": "q002",
-      "question": "What are the WHO criteria for diagnosing Type 2 diabetes mellitus?",
-      "ground_truth": "The WHO criteria for diagnosing Type 2 diabetes include: fasting plasma glucose ≥7.0 mmol/L (126 mg/dL), 2-hour plasma glucose ≥11.1 mmol/L (200 mg/dL) during an oral glucose tolerance test, HbA1c ≥48 mmol/mol (6.5%), or a random plasma glucose ≥11.1 mmol/L with classic symptoms of hyperglycemia.",
-      "source_document": "who_diabetes_guidelines.pdf",
-      "category": "endocrinology",
-      "difficulty": "medium",
-      "requires_context": true
+      "question": "What lifestyle modifications are recommended for preventing hypertension?",
+      "expected_answer": "Recommended lifestyle modifications include reducing dietary sodium intake, increasing physical activity, maintaining a healthy body weight, limiting alcohol consumption, and adopting a healthy diet rich in fruits and vegetables.",
+      "source_document": "who_hypertension.pdf",
+      "category": "prevention",
+      "should_decline": false
     },
     {
       "id": "q003",
-      "question": "What are the recommended childhood immunization schedules according to CDC guidelines?",
-      "ground_truth": "The CDC recommended immunization schedule for children includes: Hepatitis B at birth, 1-2 months, and 6-18 months; DTaP at 2, 4, 6 months, 15-18 months, and 4-6 years; MMR at 12-15 months and 4-6 years; Varicella at 12-15 months and 4-6 years; and annual influenza vaccine starting at 6 months of age, among others.",
-      "source_document": "cdc_immunization_schedule.pdf",
-      "category": "preventive_medicine",
-      "difficulty": "easy",
-      "requires_context": true
+      "question": "Which drug classes are recommended as first-line treatment for hypertension?",
+      "expected_answer": "First-line antihypertensive drug classes include thiazide diuretics, ACE inhibitors, angiotensin receptor blockers (ARBs), and calcium channel blockers.",
+      "source_document": "who_hypertension.pdf",
+      "category": "treatment",
+      "should_decline": false
     },
     {
       "id": "q004",
-      "question": "What is the NIH-recommended treatment protocol for community-acquired pneumonia in hospitalized adults?",
-      "ground_truth": "For hospitalized adults with community-acquired pneumonia (CAP), the NIH/IDSA guidelines recommend empiric antibiotic therapy. Non-ICU patients should receive a beta-lactam plus a macrolide, or a respiratory fluoroquinolone monotherapy. ICU patients require a beta-lactam plus either azithromycin or a respiratory fluoroquinolone. Duration is typically 5-7 days for uncomplicated CAP.",
-      "source_document": "nih_pneumonia_protocol.pdf",
-      "category": "infectious_disease",
-      "difficulty": "hard",
-      "requires_context": true
+      "question": "What is the target blood pressure goal for hypertensive patients receiving treatment?",
+      "expected_answer": "The treatment target is a blood pressure below 140/90 mmHg for most patients. For patients with high cardiovascular risk the target may be lower, below 130/80 mmHg.",
+      "source_document": "who_hypertension.pdf",
+      "category": "monitoring",
+      "should_decline": false
     },
     {
       "id": "q005",
-      "question": "What are the global mortality rates for cardiovascular disease according to WHO?",
-      "ground_truth": "According to WHO data, cardiovascular diseases (CVDs) are the leading cause of death globally, accounting for approximately 17.9 million deaths per year, representing 32% of all global deaths. Of these, 85% are due to heart attack and stroke. Over three quarters of CVD deaths occur in low- and middle-income countries.",
-      "source_document": "who_cardiovascular_factsheet.pdf",
-      "category": "epidemiology",
-      "difficulty": "easy",
-      "requires_context": true
+      "question": "At what stage of hypertension should pharmacological treatment be initiated?",
+      "expected_answer": "Pharmacological treatment should be initiated immediately for grade 2 or grade 3 hypertension (blood pressure 160/100 mmHg or higher). For grade 1 hypertension, medication is recommended when cardiovascular risk is high or lifestyle changes have not achieved target blood pressure.",
+      "source_document": "who_hypertension.pdf",
+      "category": "treatment",
+      "should_decline": false
+    },
+
+    {
+      "id": "q006",
+      "question": "What fasting plasma glucose value is required to diagnose diabetes mellitus?",
+      "expected_answer": "A fasting plasma glucose of 7.0 mmol/L (126 mg/dL) or above on two separate occasions is required to diagnose diabetes mellitus.",
+      "source_document": "who_diabetes.pdf",
+      "category": "diagnosis",
+      "should_decline": false
+    },
+    {
+      "id": "q007",
+      "question": "What HbA1c threshold does WHO use to diagnose diabetes?",
+      "expected_answer": "WHO recommends using an HbA1c of 48 mmol/mol (6.5%) or above as a diagnostic criterion for diabetes mellitus.",
+      "source_document": "who_diabetes.pdf",
+      "category": "diagnosis",
+      "should_decline": false
+    },
+    {
+      "id": "q008",
+      "question": "What glucose values define impaired fasting glucose and impaired glucose tolerance?",
+      "expected_answer": "Impaired fasting glucose is defined as fasting plasma glucose between 6.1 and 6.9 mmol/L. Impaired glucose tolerance is defined as a 2-hour plasma glucose between 7.8 and 11.0 mmol/L during an oral glucose tolerance test.",
+      "source_document": "who_diabetes.pdf",
+      "category": "diagnosis",
+      "should_decline": false
+    },
+    {
+      "id": "q009",
+      "question": "What interventions can prevent or delay the progression from pre-diabetes to type 2 diabetes?",
+      "expected_answer": "Structured lifestyle interventions including dietary modification, regular physical activity, and weight loss can prevent or delay progression to type 2 diabetes. Metformin may also reduce risk in high-risk individuals.",
+      "source_document": "who_diabetes.pdf",
+      "category": "prevention",
+      "should_decline": false
+    },
+    {
+      "id": "q010",
+      "question": "What are the main risk factors for developing type 2 diabetes?",
+      "expected_answer": "Key risk factors for type 2 diabetes include obesity, physical inactivity, family history of diabetes, age, history of gestational diabetes, impaired glucose tolerance, and unhealthy diet.",
+      "source_document": "who_diabetes.pdf",
+      "category": "prevention",
+      "should_decline": false
+    },
+
+    {
+      "id": "q011",
+      "question": "What is the recommended first-line pharmacological therapy for type 2 diabetes according to ADA?",
+      "expected_answer": "Metformin is recommended as the preferred initial pharmacological agent for type 2 diabetes, unless contraindicated or not tolerated.",
+      "source_document": "ada_standards_diabetes.pdf",
+      "category": "treatment",
+      "should_decline": false
+    },
+    {
+      "id": "q012",
+      "question": "What is the HbA1c target for most non-pregnant adults with diabetes?",
+      "expected_answer": "The ADA recommends an HbA1c target of less than 7 percent (53 mmol/mol) for most non-pregnant adults with diabetes.",
+      "source_document": "ada_standards_diabetes.pdf",
+      "category": "monitoring",
+      "should_decline": false
+    },
+    {
+      "id": "q013",
+      "question": "When should insulin therapy be considered in patients with type 2 diabetes?",
+      "expected_answer": "Insulin therapy should be initiated when HbA1c remains above target despite optimised oral or injectable therapy, or when the patient presents with severe hyperglycaemia, significant symptoms, or metabolic decompensation.",
+      "source_document": "ada_standards_diabetes.pdf",
+      "category": "treatment",
+      "should_decline": false
+    },
+    {
+      "id": "q014",
+      "question": "How should mild to moderate hypoglycaemia be managed in a patient with diabetes?",
+      "expected_answer": "Mild to moderate hypoglycaemia should be treated with 15 to 20 grams of fast-acting carbohydrates such as glucose tablets or juice, followed by re-checking blood glucose after 15 minutes. Severe hypoglycaemia requires glucagon administration.",
+      "source_document": "ada_standards_diabetes.pdf",
+      "category": "treatment",
+      "should_decline": false
+    },
+    {
+      "id": "q015",
+      "question": "What cardiovascular risk factors should be assessed and monitored in patients with diabetes?",
+      "expected_answer": "Cardiovascular risk factors to monitor include blood pressure, lipid profile, smoking status, body mass index, kidney function, and urine albumin-to-creatinine ratio.",
+      "source_document": "ada_standards_diabetes.pdf",
+      "category": "monitoring",
+      "should_decline": false
+    },
+    {
+      "id": "q016",
+      "question": "How often should kidney function be assessed in people with diabetes, and what tests are used?",
+      "expected_answer": "Kidney function should be assessed at least annually using estimated glomerular filtration rate (eGFR) and urine albumin-to-creatinine ratio (UACR) in all patients with type 2 diabetes.",
+      "source_document": "ada_standards_diabetes.pdf",
+      "category": "monitoring",
+      "should_decline": false
+    },
+    {
+      "id": "q017",
+      "question": "What structured lifestyle programme does ADA recommend for preventing type 2 diabetes in high-risk individuals?",
+      "expected_answer": "ADA recommends an intensive lifestyle programme targeting at least 7 percent weight loss and at least 150 minutes per week of moderate-intensity physical activity, such as the Diabetes Prevention Program lifestyle intervention.",
+      "source_document": "ada_standards_diabetes.pdf",
+      "category": "prevention",
+      "should_decline": false
+    },
+    {
+      "id": "q018",
+      "question": "Who should be screened for type 2 diabetes according to ADA recommendations?",
+      "expected_answer": "Screening is recommended for adults aged 35 years or older, overweight or obese adults with one or more risk factors (family history, hypertension, dyslipidaemia, history of gestational diabetes), and anyone previously identified with pre-diabetes.",
+      "source_document": "ada_standards_diabetes.pdf",
+      "category": "diagnosis",
+      "should_decline": false
+    },
+
+    {
+      "id": "q019",
+      "question": "What is the recommended treatment protocol for COVID-19 in hospitalised adults?",
+      "expected_answer": "DECLINE",
+      "source_document": "none",
+      "category": "treatment",
+      "should_decline": true
+    },
+    {
+      "id": "q020",
+      "question": "What are the WHO-recommended antiretroviral regimens for HIV treatment in adults?",
+      "expected_answer": "DECLINE",
+      "source_document": "none",
+      "category": "treatment",
+      "should_decline": true
     }
+
   ]
 }

@@ -13,6 +13,53 @@ A production-grade Retrieval-Augmented Generation system for querying clinical g
 
 ---
 
+## Live Demo
+
+**Hugging Face Spaces:** https://huggingface.co/spaces/vishaalsai29/healthcare-rag
+
+---
+
+## Evaluation Results
+
+Results from the Phase 4 golden-dataset evaluation (20 Q&A pairs, 3 clinical PDFs).
+
+| Category    | N  | Faithfulness | Citation Rate | Declined Correctly |
+|-------------|---:|-------------:|--------------:|-------------------:|
+| diagnosis   |  5 |        0.487 |         0.600 |              0.600 |
+| treatment   |  7 |        0.548 |         0.714 |              0.714 |
+| monitoring  |  4 |        0.667 |         1.000 |              1.000 |
+| prevention  |  4 |        0.566 |         0.750 |              0.750 |
+| **OVERALL** | **20** | **0.560** | **0.750** | **0.750** |
+
+**Threshold:** faithfulness ≥ 0.70 · **Status: requires more PDFs**
+
+> The faithfulness score reflects keyword-overlap between expected key facts and actual answers.
+> 5 of 18 answerable questions were incorrectly declined (the pipeline said "insufficient context")
+> because those specific clinical details are sparse in the current 3-PDF corpus.
+> Expanding the document set to 10–20 PDFs is expected to push faithfulness above 0.70.
+
+### Run evaluation locally
+
+```bash
+# 1. Start the FastAPI backend
+uvicorn src.api:app --port 8000 --reload
+
+# 2. In another terminal, run the evaluation script
+python scripts/run_evaluation.py
+
+# Quick smoke test (5 samples)
+python scripts/run_evaluation.py --max-samples 5
+
+# Against a different API endpoint
+python scripts/run_evaluation.py --api-url http://localhost:8000
+```
+
+Results are saved to `data/eval/results/results.json`.
+The CI/CD pipeline (`.github/workflows/ci.yml`) runs all 20 pairs on every push and fails the
+build if mean faithfulness drops below 0.70.
+
+---
+
 ## Architecture Overview
 
 ```
