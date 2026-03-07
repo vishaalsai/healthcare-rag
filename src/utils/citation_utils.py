@@ -19,6 +19,17 @@ from src.retrieval.vector_store import RetrievedChunk
 _CITATION_PATTERN = re.compile(r"\[(\d+)\]")
 _INSUFFICIENT_PREFIX = "INSUFFICIENT_CONTEXT"
 
+# Hedged phrases that indicate the LLM is declining to answer fully
+# despite having context — treat these the same as INSUFFICIENT_CONTEXT.
+_HEDGED_DECLINE_PHRASES = [
+    "the context does not",
+    "i can offer a partial",
+    "not fully covered",
+    "the provided context does not contain",
+    "i cannot find",
+    "not covered in the",
+]
+
 
 @dataclass
 class CitationResult:
@@ -82,6 +93,19 @@ class CitationEnforcer:
                 answer=answer,
                 declined=True,
             )
+
+        # 1b. Check for hedged decline phrases (LLM hedges instead of answering)
+        answer_lower = answer.lower()
+        for phrase in _HEDGED_DECLINE_PHRASES:
+            if phrase in answer_lower:
+                logger.info(
+                    f"LLM used hedged decline phrase {phrase!r} — declining response"
+                )
+                return CitationResult(
+                    is_valid=False,
+                    answer=answer,
+                    declined=True,
+                )
 
         # 2. Parse all [N] citations
         cited_numbers = [
