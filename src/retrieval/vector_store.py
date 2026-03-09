@@ -81,7 +81,7 @@ class ChromaVectorStore:
         logger.info(f"Embedding and indexing {len(chunks)} chunks …")
 
         for i in range(0, len(chunks), batch_size):
-            batch = chunks[i : i + batch_size]
+            batch = chunks[i:i + batch_size]
             texts = [c.text for c in batch]
             ids = [c.chunk_id for c in batch]
             metadatas = [c.metadata for c in batch]
@@ -187,8 +187,6 @@ class ChromaVectorStore:
     def _get_collection(self):
         if self._collection is None:
             client = self._get_client()
-            import chromadb
-
             self._collection = client.get_or_create_collection(
                 name=self.collection_name,
                 metadata={"hnsw:space": self.distance_metric},

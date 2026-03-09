@@ -10,7 +10,6 @@ Requires the FastAPI backend running on localhost:8000.
 from __future__ import annotations
 
 import sys
-from pathlib import Path
 
 # ── stdout encoding (Windows cp1252 → UTF-8) ─────────────────────────────────
 if hasattr(sys.stdout, "reconfigure"):
