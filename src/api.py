@@ -11,7 +11,6 @@ Endpoints:
 
 from __future__ import annotations
 
-import os
 import sys
 import time
 from contextlib import asynccontextmanager
@@ -23,7 +22,7 @@ import yaml
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+
 from loguru import logger
 from pydantic import BaseModel, Field
 

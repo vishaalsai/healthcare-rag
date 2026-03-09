@@ -43,7 +43,11 @@ def get_tracer():
 
     public_key = os.environ.get("LANGFUSE_PUBLIC_KEY", "").strip()
     secret_key = os.environ.get("LANGFUSE_SECRET_KEY", "").strip()
-    host = (os.environ.get("LANGFUSE_HOST") or os.environ.get("LANGFUSE_BASE_URL") or "https://cloud.langfuse.com").strip()
+    host = (
+        os.environ.get("LANGFUSE_HOST")
+        or os.environ.get("LANGFUSE_BASE_URL")
+        or "https://cloud.langfuse.com"
+    ).strip()
 
     # Treat placeholder values as missing
     if not public_key or not secret_key or public_key.startswith("pk-lf-your"):
