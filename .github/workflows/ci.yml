@@ -87,10 +87,12 @@ jobs:
   # Downloads the 3 clinical PDFs, ingests into ChromaDB, starts the FastAPI
   # server, then runs the golden-dataset evaluation.
   # Fails the build if mean faithfulness < 0.70.
+  # Runs on master pushes only (not PRs) to avoid burning API quota.
   evaluate:
     name: Evaluate (golden dataset)
     runs-on: ubuntu-latest
     needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
 
     steps:
       - uses: actions/checkout@v4
@@ -183,3 +185,39 @@ jobs:
         with:
           name: eval-results-${{ github.sha }}
           path: data/eval/results/results.json
+
+  # ── Job 4: Observability Gate ────────────────────────────────────────────
+  # Reads live metrics from Langfuse and checks them against the thresholds
+  # defined in config/observability_thresholds.yaml.
+  # Fails the build if any hard threshold (citation coverage, failure rate,
+  # P95 latency) is breached.  Prints a warning for soft thresholds (cost).
+  # Skips gracefully when Langfuse is not configured or data is insufficient.
+  # Runs on master pushes only — same condition as the evaluate job.
+  observability-gate:
+    name: Observability Regression Gate
+    runs-on: ubuntu-latest
+    needs: evaluate
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run observability regression check
+        env:
+          LANGFUSE_PUBLIC_KEY: ${{ secrets.LANGFUSE_PUBLIC_KEY }}
+          LANGFUSE_SECRET_KEY: ${{ secrets.LANGFUSE_SECRET_KEY }}
+          LANGFUSE_HOST: ${{ secrets.LANGFUSE_HOST }}
+        run: python scripts/check_observability.py

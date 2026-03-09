@@ -24,13 +24,12 @@ from loguru import logger
 # ── Allow running from project root ──────────────────────────────────
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from src.ingestion.pdf_loader import PDFLoader
-from src.ingestion.chunker import TextChunker
-from src.ingestion.embedder import EmbeddingModel
-from src.retrieval.vector_store import ChromaVectorStore
-from src.utils.prompt_manager import PromptManager
+from src.ingestion.pdf_loader import PDFLoader  # noqa: E402
+from src.ingestion.chunker import TextChunker  # noqa: E402
+from src.ingestion.embedder import EmbeddingModel  # noqa: E402
+from src.retrieval.vector_store import ChromaVectorStore  # noqa: E402
 
-import yaml
+import yaml  # noqa: E402
 
 load_dotenv()
 
@@ -107,12 +106,12 @@ def main(source_dir: str, reset: bool, dry_run: bool) -> None:
 
 def _print_chunk_stats(chunks, chunker) -> None:
     token_counts = [c.token_count for c in chunks]
-    print(f"\nChunk statistics:")
+    print("\nChunk statistics:")
     print(f"  Total chunks : {len(chunks)}")
     print(f"  Min tokens   : {min(token_counts)}")
     print(f"  Max tokens   : {max(token_counts)}")
     print(f"  Avg tokens   : {sum(token_counts)/len(token_counts):.1f}")
-    print(f"\nSample chunk:")
+    print("\nSample chunk:")
     c = chunks[0]
     print(f"  ID     : {c.chunk_id}")
     print(f"  Tokens : {c.token_count}")

@@ -91,7 +91,10 @@ def compute_faithfulness(
 
     # Deduplicate while preserving order
     seen: set[str] = set()
-    unique_terms = [t for t in terms if not (t in seen or seen.add(t))]  # type: ignore[func-returns-value]
+    unique_terms = [
+        t for t in terms
+        if not (t in seen or seen.add(t))  # type: ignore[func-returns-value]
+    ]
 
     matches = sum(1 for t in unique_terms if t in actual_lower)
     return round(matches / len(unique_terms), 4)
@@ -160,19 +163,19 @@ def print_summary(results: list[dict], category_stats: dict, overall: dict) -> N
             continue
         n = s["count"]
         faith = f"{s['faithfulness']:.3f}"
-        cit   = f"{s['citation_present']:.3f}"
-        dec   = f"{s['declined_correctly']:.3f}"
-        flag  = " OK" if s["faithfulness"] >= FAITHFULNESS_PASS_THRESHOLD else " !!"
+        cit = f"{s['citation_present']:.3f}"
+        dec = f"{s['declined_correctly']:.3f}"
+        flag = " OK" if s["faithfulness"] >= FAITHFULNESS_PASS_THRESHOLD else " !!"
         print(f"  {cat:<16} {n:>3}  {faith:>13}{flag}  {cit:>8}  {dec:>9}")
 
     print("  " + "-" * (W - 2))
 
     # Overall row
-    n_tot  = overall["total"]
-    f_avg  = overall["mean_faithfulness"]
-    c_avg  = overall["mean_citation_present"]
-    d_avg  = overall["mean_declined_correctly"]
-    flag   = " PASS" if overall["passed"] else " FAIL"
+    n_tot = overall["total"]
+    f_avg = overall["mean_faithfulness"]
+    c_avg = overall["mean_citation_present"]
+    d_avg = overall["mean_declined_correctly"]
+    flag = " PASS" if overall["passed"] else " FAIL"
     print(f"  {'OVERALL':<16} {n_tot:>3}  {f_avg:.3f}{flag}  {c_avg:.3f}   {d_avg:.3f}")
     print("=" * W)
 
@@ -185,7 +188,10 @@ def print_summary(results: list[dict], category_stats: dict, overall: dict) -> N
     print()
 
     # Per-question detail (compact)
-    print(f"  {'ID':<6} {'Cat':<12} {'Faith':>6}  {'Cit':>4}  {'Dec?':>5}  {'Declined':>8}  Question (truncated)")
+    print(
+        f"  {'ID':<6} {'Cat':<12} {'Faith':>6}"
+        f"  {'Cit':>4}  {'Dec?':>5}  {'Declined':>8}  Question (truncated)"
+    )
     print("  " + "-" * (W - 2))
     for r in results:
         q_short = r["question"][:38] + "…" if len(r["question"]) > 38 else r["question"]
@@ -225,7 +231,7 @@ def main(dataset_path: str, api_url: str, max_samples: int | None) -> int:
     results: list[dict] = []
 
     for i, pair in enumerate(qa_pairs, 1):
-        qid      = pair["id"]
+        qid = pair["id"]
         question = pair["question"]
         expected = pair["expected_answer"]
         category = pair["category"]
@@ -239,8 +245,8 @@ def main(dataset_path: str, api_url: str, max_samples: int | None) -> int:
 
             api_declined_flag = bool(resp.get("declined", False))
             faith = compute_faithfulness(expected, actual_answer, should_decline, api_declined_flag)
-            cit   = compute_citation_present(resp, should_decline)
-            dec   = compute_declined_correctly(resp, should_decline)
+            cit = compute_citation_present(resp, should_decline)
+            dec = compute_declined_correctly(resp, should_decline)
 
         except requests.HTTPError as exc:
             logger.error(f"  HTTP {exc.response.status_code} — scoring as 0")
@@ -283,22 +289,22 @@ def main(dataset_path: str, api_url: str, max_samples: int | None) -> int:
             }
         s = category_stats[cat]
         s["count"] += 1
-        s["faithfulness"]       += r["faithfulness"]
-        s["citation_present"]   += r["citation_present"]
+        s["faithfulness"] += r["faithfulness"]
+        s["citation_present"] += r["citation_present"]
         s["declined_correctly"] += r["declined_correctly"]
 
     for cat, s in category_stats.items():
         n = s["count"]
-        s["faithfulness"]       = round(s["faithfulness"] / n, 4)
-        s["citation_present"]   = round(s["citation_present"] / n, 4)
+        s["faithfulness"] = round(s["faithfulness"] / n, 4)
+        s["citation_present"] = round(s["citation_present"] / n, 4)
         s["declined_correctly"] = round(s["declined_correctly"] / n, 4)
 
     # ── 5. Overall stats ──────────────────────────────────────────────────────
     n = len(results)
-    mean_faith = round(sum(r["faithfulness"]       for r in results) / n, 4)
-    mean_cit   = round(sum(r["citation_present"]   for r in results) / n, 4)
-    mean_dec   = round(sum(r["declined_correctly"] for r in results) / n, 4)
-    passed     = mean_faith >= FAITHFULNESS_PASS_THRESHOLD
+    mean_faith = round(sum(r["faithfulness"] for r in results) / n, 4)
+    mean_cit = round(sum(r["citation_present"] for r in results) / n, 4)
+    mean_dec = round(sum(r["declined_correctly"] for r in results) / n, 4)
+    passed = mean_faith >= FAITHFULNESS_PASS_THRESHOLD
 
     overall = {
         "total": n,
