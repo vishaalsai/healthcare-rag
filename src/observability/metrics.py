@@ -84,7 +84,7 @@ class MetricsCollector:
             from_ts = datetime.now(timezone.utc) - timedelta(hours=hours)
             response = self._tracer.fetch_traces(
                 from_timestamp=from_ts,
-                limit=500,
+                limit=100,
             )
             traces = response.data
         except Exception as exc:

@@ -1,0 +1,52 @@
+# ============================================================
+# Healthcare RAG — Observability Thresholds
+# ============================================================
+#
+# This file version-controls all observability metric thresholds.
+# The CI observability-gate job (scripts/check_observability.py)
+# reads these values and fails the build when hard thresholds
+# are breached, or prints warnings for soft thresholds.
+#
+# HARD thresholds  → build fails  (sys.exit 1) if breached
+# SOFT thresholds  → warning only (sys.exit 0) if breached
+#
+# How to tune:
+#   - Raise citation_coverage_threshold as dataset grows (target: 0.80+)
+#   - Lower failure_rate_threshold once corpus covers all topics
+#   - Raise p95_latency_ms_threshold during HF Spaces cold-start periods
+#   - Adjust avg_cost_usd_warning to match monthly budget / request volume
+# ============================================================
+
+observability:
+
+  # ── Quality thresholds (HARD) ──────────────────────────────────────────────
+  # citation_coverage_threshold: minimum fraction of answers that include
+  #   at least one citation. Low coverage means the model is answering
+  #   without grounding — a safety risk for clinical content.
+  citation_coverage_threshold: 0.70
+
+  # failure_rate_threshold: maximum fraction of requests that returned
+  #   INSUFFICIENT_CONTEXT. A rising failure rate indicates either corpus
+  #   gaps or retrieval degradation.
+  failure_rate_threshold: 0.20
+
+  # ── Performance thresholds (HARD) ─────────────────────────────────────────
+  # p95_latency_ms_threshold: 95th-percentile end-to-end latency cap (ms).
+  #   10 000 ms = 10 seconds. Covers cold-start on Hugging Face Spaces.
+  #   Lower to 5 000 ms once the deployment is warmed up.
+  p95_latency_ms_threshold: 10000
+
+  # ── Cost guard (SOFT — warning only) ──────────────────────────────────────
+  # avg_cost_usd_warning: warn if average cost per request exceeds this.
+  #   $0.05 = 5 cents per query (claude-opus-4-6: $15/M in, $75/M out).
+  #   Does NOT fail the build — used for budget monitoring only.
+  avg_cost_usd_warning: 0.05
+
+  # ── Evaluation window ─────────────────────────────────────────────────────
+  # min_sample_size: skip the gate (exit 0) if fewer than this many traces
+  #   exist in the evaluation window. Prevents false failures on fresh deploys.
+  min_sample_size: 5
+
+  # evaluation_window_hours: how far back to look when fetching traces.
+  #   24 = last 24 hours. Increase to 48 for low-traffic deployments.
+  evaluation_window_hours: 24

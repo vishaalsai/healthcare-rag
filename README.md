@@ -304,6 +304,43 @@ push → lint → unit-tests → quality-gate (main only)
 
 Set `ANTHROPIC_API_KEY` in **Settings → Secrets → Actions** to enable the quality gate.
 
+Set `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`, and `LANGFUSE_HOST` in **Settings → Secrets → Actions** to enable the observability gate.
+
+---
+
+## Observability Architecture
+
+The system ships a three-layer observability stack that runs alongside every RAG request:
+
+1. **Tracing** (`src/observability/tracer.py`) — Each query creates a Langfuse trace with latency, token counts, cost, citation count, and decline reason attached as metadata.
+2. **Metrics aggregation** (`src/observability/metrics.py`) — `MetricsCollector` fetches traces from Langfuse and computes a rolling `MetricsSummary` over a configurable time window.
+3. **Regression gate** (`scripts/check_observability.py`) — Reads thresholds from `config/observability_thresholds.yaml` and exits 1 if any hard threshold is breached.
+
+### Metrics & Thresholds
+
+| Metric | Threshold | Kind | Meaning |
+|---|---|---|---|
+| Citation Coverage | ≥ 0.70 | **Hard** | % of answers containing at least one `[N]` citation |
+| Failure Rate | ≤ 0.20 | **Hard** | % of requests declined as `INSUFFICIENT_CONTEXT` |
+| P95 Latency | ≤ 10 000 ms | **Hard** | 95th-percentile end-to-end latency |
+| Avg Cost / Request | ≤ $0.05 | Soft (warn) | Average Claude API cost per query |
+
+Thresholds are defined in `config/observability_thresholds.yaml` and version-controlled alongside the code.
+
+### Run the observability check locally
+
+```bash
+# Requires LANGFUSE_* keys in .env
+python scripts/check_observability.py
+```
+
+### Access the metrics dashboard
+
+```bash
+uvicorn src.api:app --port 8000
+# Open http://localhost:8000/dashboard
+```
+
 ---
 
 ## Running Tests
