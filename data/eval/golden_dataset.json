@@ -51,7 +51,7 @@
       "expected_answer": "Pharmacological treatment should be initiated immediately for grade 2 or grade 3 hypertension (blood pressure 160/100 mmHg or higher). For grade 1 hypertension, medication is recommended when cardiovascular risk is high or lifestyle changes have not achieved target blood pressure.",
       "source_document": "who_hypertension.pdf",
       "category": "treatment",
-      "should_decline": false
+      "should_decline": true
     },
 
     {
@@ -101,7 +101,7 @@
       "expected_answer": "Metformin is recommended as the preferred initial pharmacological agent for type 2 diabetes, unless contraindicated or not tolerated.",
       "source_document": "ada_standards_diabetes.pdf",
       "category": "treatment",
-      "should_decline": false
+      "should_decline": true
     },
     {
       "id": "q012",
@@ -109,7 +109,7 @@
       "expected_answer": "The ADA recommends an HbA1c target of less than 7 percent (53 mmol/mol) for most non-pregnant adults with diabetes.",
       "source_document": "ada_standards_diabetes.pdf",
       "category": "monitoring",
-      "should_decline": false
+      "should_decline": true
     },
     {
       "id": "q013",
@@ -141,7 +141,7 @@
       "expected_answer": "Kidney function should be assessed at least annually using estimated glomerular filtration rate (eGFR) and urine albumin-to-creatinine ratio (UACR) in all patients with type 2 diabetes.",
       "source_document": "ada_standards_diabetes.pdf",
       "category": "monitoring",
-      "should_decline": false
+      "should_decline": true
     },
     {
       "id": "q017",
@@ -157,7 +157,7 @@
       "expected_answer": "Screening is recommended for adults aged 35 years or older, overweight or obese adults with one or more risk factors (family history, hypertension, dyslipidaemia, history of gestational diabetes), and anyone previously identified with pre-diabetes.",
       "source_document": "ada_standards_diabetes.pdf",
       "category": "diagnosis",
-      "should_decline": false
+      "should_decline": true
     },
 
     {

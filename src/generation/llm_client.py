@@ -44,16 +44,19 @@ class AnthropicClient:
         self,
         system_prompt: str,
         user_prompt: str,
-    ) -> str:
+    ) -> tuple[str, int, int]:
         """
-        Send a single-turn message and return the text response.
+        Send a single-turn message and return the response with token counts.
 
         Args:
             system_prompt: Claude's system instruction.
             user_prompt:   The user message (contains context + question).
 
         Returns:
-            Stripped text content of the first TextBlock.
+            Tuple of (text, input_tokens, output_tokens) where:
+              - text:          Stripped text content of the first TextBlock.
+              - input_tokens:  Number of prompt tokens consumed.
+              - output_tokens: Number of completion tokens generated.
         """
         client = self._get_client()
 
@@ -67,11 +70,12 @@ class AnthropicClient:
                     messages=[{"role": "user", "content": user_prompt}],
                 )
                 text = response.content[0].text
+                input_tokens = response.usage.input_tokens
+                output_tokens = response.usage.output_tokens
                 logger.debug(
-                    f"Claude response: {response.usage.input_tokens} in / "
-                    f"{response.usage.output_tokens} out tokens"
+                    f"Claude response: {input_tokens} in / {output_tokens} out tokens"
                 )
-                return text.strip()
+                return text.strip(), input_tokens, output_tokens
 
             except Exception as exc:
                 is_rate_limit = "rate_limit" in str(exc).lower() or "529" in str(exc)

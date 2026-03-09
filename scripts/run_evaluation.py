@@ -53,19 +53,31 @@ _STOP_WORDS = {
 #  Scoring helpers
 # ─────────────────────────────────────────────────────────────────────────────
 
-def compute_faithfulness(expected_answer: str, actual_answer: str) -> float:
+def compute_faithfulness(
+    expected_answer: str,
+    actual_answer: str,
+    should_decline: bool = False,
+    api_declined: bool = False,
+) -> float:
     """
-    Keyword-overlap faithfulness: fraction of meaningful terms from
-    expected_answer that appear in actual_answer.
+    Faithfulness score (0–1) with four cases:
 
-    Returns 1.0 if expected_answer is 'DECLINE' (not applicable) or empty.
-    Returns 0.0 if the system returned an empty answer for a non-decline question.
+      should_decline=True  + api_declined=True  → 1.0  (correct: pipeline declined as expected)
+      should_decline=True  + api_declined=False → 0.0  (wrong: pipeline hallucinated an answer)
+      should_decline=False + api_declined=True  → 0.0  (wrong: pipeline declined when it shouldn't)
+      should_decline=False + api_declined=False → keyword-overlap against expected_answer
     """
-    if not expected_answer or expected_answer.strip().upper() == "DECLINE":
-        return 1.0  # metric not applicable for should_decline=True questions
+    # Case 1 & 2: question should be declined
+    if should_decline:
+        return 1.0 if api_declined else 0.0
 
+    # Case 3: question should be answered but pipeline declined
+    if api_declined:
+        return 0.0
+
+    # Case 4: normal — keyword-overlap faithfulness
     if not actual_answer or actual_answer.strip() == "":
-        return 0.0  # system failed to produce any answer
+        return 0.0
 
     expected_lower = expected_answer.lower()
     actual_lower = actual_answer.lower()
@@ -225,7 +237,8 @@ def main(dataset_path: str, api_url: str, max_samples: int | None) -> int:
             resp = call_query(api_url, question)
             actual_answer = resp.get("answer", "")
 
-            faith = compute_faithfulness(expected, actual_answer)
+            api_declined_flag = bool(resp.get("declined", False))
+            faith = compute_faithfulness(expected, actual_answer, should_decline, api_declined_flag)
             cit   = compute_citation_present(resp, should_decline)
             dec   = compute_declined_correctly(resp, should_decline)
 

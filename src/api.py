@@ -17,6 +17,7 @@ import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
+from uuid import uuid4
 
 import yaml
 from dotenv import load_dotenv
@@ -68,6 +69,7 @@ class QueryResponse(BaseModel):
     citations: list[CitationSchema]
     declined: bool
     processing_time_ms: float
+    trace_id: str = ""
     metadata: dict[str, Any] = {}
 
 
@@ -215,11 +217,12 @@ async def query(request: QueryRequest, req: Request) -> QueryResponse:
     if not question:
         raise HTTPException(status_code=422, detail="Question cannot be empty.")
 
-    logger.info(f"Query: {question!r}")
+    trace_id = str(uuid4())
+    logger.info(f"Query: {question!r} (trace_id={trace_id})")
     start_ts = time.perf_counter()
 
     try:
-        result = pipeline.answer(question)
+        result = pipeline.answer(question, trace_id=trace_id)
     except Exception as exc:
         logger.error(f"Pipeline error for question {question!r}: {exc}")
         raise HTTPException(
@@ -231,7 +234,8 @@ async def query(request: QueryRequest, req: Request) -> QueryResponse:
     logger.info(
         f"Answered in {elapsed_ms:.0f} ms | "
         f"declined={result.declined} | "
-        f"citations={len(result.citations)}"
+        f"citations={len(result.citations)} | "
+        f"trace_id={trace_id}"
     )
 
     return QueryResponse(
@@ -249,6 +253,7 @@ async def query(request: QueryRequest, req: Request) -> QueryResponse:
         ],
         declined=result.declined,
         processing_time_ms=elapsed_ms,
+        trace_id=trace_id,
         metadata=result.metadata or {},
     )
 

@@ -29,6 +29,18 @@ if [ "$PDF_COUNT" -eq 0 ]; then
         && echo "  ✓ ADA Standards of Diabetes Care" \
         || echo "  ⚠ Skipped ADA Standards (download failed)"
 
+    curl -L --retry 3 --retry-delay 5 --max-time 120 \
+        -o data/raw/who_diabetes_monitoring.pdf \
+        "https://cdn.who.int/media/docs/default-source/ncds/ncd-surveillance/guidance-on-global-monitoring-for-diabetes.pdf" \
+        && echo "  WHO Guidance on Global Monitoring for Diabetes" \
+        || echo "  Skipped WHO Diabetes Monitoring (download failed)"
+
+    curl -L --retry 3 --retry-delay 5 --max-time 120 \
+        -o data/raw/jnc7_hypertension_guidelines.pdf \
+        "https://www.nhlbi.nih.gov/files/docs/guidelines/jnc7full.pdf" \
+        && echo "  JNC 7 Hypertension Guidelines (NIH/NHLBI)" \
+        || echo "  Skipped JNC 7 (download failed)"
+
     # Remove any 0-byte files that result from failed downloads
     find data/raw -name "*.pdf" -empty -delete
 
