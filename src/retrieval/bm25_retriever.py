@@ -7,7 +7,6 @@ Uses rank_bm25 with simple whitespace tokenization plus stopword removal.
 from __future__ import annotations
 
 import re
-from typing import Sequence
 
 from loguru import logger
 

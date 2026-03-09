@@ -150,8 +150,10 @@ def test_anthropic_client_complete():
         mock_anthropic.messages.create.return_value = mock_response
         client._client = mock_anthropic
 
-        result = client.complete("system prompt", "user prompt")
-        assert result == "Mocked answer [1]."
+        text, input_tokens, output_tokens = client.complete("system prompt", "user prompt")
+        assert text == "Mocked answer [1]."
+        assert input_tokens == 100
+        assert output_tokens == 20
 
 
 # ------------------------------------------------------------------ #
@@ -164,7 +166,9 @@ def test_answer_generator_end_to_end(sample_retrieved_chunks):
     mock_llm.model = "claude-opus-4-6"
     mock_llm.complete.return_value = (
         "Thiazide diuretics are first-line treatment for hypertension [1]. "
-        "ACE inhibitors are preferred in diabetic patients [2]."
+        "ACE inhibitors are preferred in diabetic patients [2].",
+        350,   # input_tokens
+        80,    # output_tokens
     )
 
     mock_retriever = MagicMock()
@@ -211,7 +215,9 @@ def test_answer_generator_declines_on_insufficient_context(sample_retrieved_chun
     mock_llm = MagicMock()
     mock_llm.model = "claude-opus-4-6"
     mock_llm.complete.return_value = (
-        "INSUFFICIENT_CONTEXT: The documents do not address this topic."
+        "INSUFFICIENT_CONTEXT: The documents do not address this topic.",
+        200,   # input_tokens
+        15,    # output_tokens
     )
     mock_retriever = MagicMock()
     mock_retriever.query.return_value = sample_retrieved_chunks

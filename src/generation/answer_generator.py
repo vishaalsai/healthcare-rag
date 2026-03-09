@@ -7,10 +7,14 @@ Answer Generator: full RAG pipeline that:
   4. Calls Claude for generation
   5. Enforces citation validity
   6. Returns a structured AnswerResult
+
+Phase 3 addition: every call is traced in Langfuse with spans for
+retrieval, reranking, prompt_build, and generation.
 """
 
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -79,36 +83,87 @@ class AnswerGenerator:
     #  Public API                                                          #
     # ------------------------------------------------------------------ #
 
-    def answer(self, question: str) -> AnswerResult:
+    def answer(self, question: str, trace_id: str | None = None) -> AnswerResult:
         """
-        End-to-end RAG query.
+        End-to-end RAG query with Langfuse tracing.
+
+        Args:
+            question: The user's clinical question.
+            trace_id: Optional UUID to group all spans under one trace in
+                      Langfuse (pass from the API layer so HTTP requests
+                      map 1-to-1 to traces).
 
         Returns:
             AnswerResult with answer text, citations, and provenance.
         """
         logger.info(f"Query: {question!r}")
 
-        # ── Step 1: Hybrid retrieval ─────────────────────────────────
+        # ── Initialise top-level Langfuse trace ───────────────────────
+        trace = None
+        try:
+            from src.observability.tracer import calculate_cost, create_trace
+
+            trace = create_trace(
+                name="rag-query",
+                input=question,
+                metadata={"model": self.llm.model},
+                trace_id=trace_id,
+            )
+        except Exception:
+            pass  # tracing must never crash the pipeline
+
+        # ── Step 1: Hybrid retrieval ──────────────────────────────────
+        _t0 = time.perf_counter()
         candidates = self.retriever.query(question)
+        _retrieval_latency = time.perf_counter() - _t0
         logger.info(f"Retrieved {len(candidates)} candidate chunks")
 
-        if not candidates:
-            return self._no_context_result(question)
+        try:
+            if trace is not None:
+                trace.span(
+                    name="retrieval",
+                    input={"query": question},
+                    output={
+                        "chunks_retrieved": len(candidates),
+                        "chunk_ids": [c.chunk_id for c in candidates],
+                    },
+                    metadata={"latency_s": round(_retrieval_latency, 4)},
+                )
+        except Exception:
+            pass
 
-        # ── Step 2: Cross-encoder reranking ──────────────────────────
+        if not candidates:
+            result = self._no_context_result(question)
+            self._end_trace(trace, result)
+            return result
+
+        # ── Step 2: Cross-encoder reranking ───────────────────────────
+        _t0 = time.perf_counter()
         if self.reranker is not None:
             chunks = self.reranker.rerank(question, candidates)
             logger.info(f"Reranked to {len(chunks)} final chunks")
         else:
             chunks = candidates
+        _rerank_latency = time.perf_counter() - _t0
+
+        try:
+            if trace is not None:
+                trace.span(
+                    name="reranking",
+                    input={"input_chunk_count": len(candidates)},
+                    output={"output_chunk_count": len(chunks)},
+                    metadata={"latency_s": round(_rerank_latency, 4)},
+                )
+        except Exception:
+            pass
 
         if not chunks:
-            return self._no_context_result(question)
+            result = self._no_context_result(question)
+            self._end_trace(trace, result)
+            return result
 
-        # ── Step 3: Build numbered context block ─────────────────────
+        # ── Step 3: Build numbered context block ──────────────────────
         context_block = self.enforcer.build_context_block(chunks)
-
-        # ── Step 4: Construct prompts ─────────────────────────────────
         system_prompt = self.prompts.get("healthcare_rag_system")
         user_prompt = self.prompts.get(
             "healthcare_rag_user",
@@ -116,19 +171,58 @@ class AnswerGenerator:
             question=question,
         )
 
-        # ── Step 5: Claude generation ─────────────────────────────────
-        raw_answer = self.llm.complete(system_prompt, user_prompt)
+        try:
+            if trace is not None:
+                token_estimate = self._estimate_tokens(system_prompt + user_prompt)
+                trace.span(
+                    name="prompt_build",
+                    input={"chunk_count": len(chunks)},
+                    output={
+                        "system_prompt": system_prompt,
+                        "user_prompt": user_prompt,
+                    },
+                    metadata={"token_estimate": token_estimate},
+                )
+        except Exception:
+            pass
+
+        # ── Step 4: Claude generation ─────────────────────────────────
+        _t0 = time.perf_counter()
+        raw_answer, input_tokens, output_tokens = self.llm.complete(
+            system_prompt, user_prompt
+        )
+        _gen_latency = time.perf_counter() - _t0
         logger.info(
             f"Generated answer ({len(raw_answer)} chars) using "
             f"prompt v{self.prompts.version('healthcare_rag_system')}"
         )
 
-        # ── Step 6: Citation enforcement ──────────────────────────────
+        try:
+            if trace is not None:
+                cost = calculate_cost(input_tokens, output_tokens)
+                trace.generation(
+                    name="generation",
+                    model=self.llm.model,
+                    input=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_prompt},
+                    ],
+                    output=raw_answer,
+                    usage={"input": input_tokens, "output": output_tokens},
+                    metadata={
+                        "latency_s": round(_gen_latency, 4),
+                        **cost,
+                    },
+                )
+        except Exception:
+            pass
+
+        # ── Step 5: Citation enforcement ──────────────────────────────
         citation_result = self.enforcer.enforce(raw_answer, chunks)
 
         if citation_result.declined:
             logger.warning("Response declined — INSUFFICIENT_CONTEXT signalled")
-            return AnswerResult(
+            result = AnswerResult(
                 question=question,
                 answer=self.prompts.get("decline_response"),
                 citations=[],
@@ -136,6 +230,17 @@ class AnswerGenerator:
                 citation_result=citation_result,
                 declined=True,
             )
+            self._end_trace(
+                trace,
+                result,
+                extra_metadata={
+                    "model": self.llm.model,
+                    "citation_count": 0,
+                    "declined_reason": "INSUFFICIENT_CONTEXT",
+                    "insufficient_context": True,
+                },
+            )
+            return result
 
         if not citation_result.is_valid and self.decline_on_invalid:
             logger.warning(
@@ -144,7 +249,7 @@ class AnswerGenerator:
                 f"uncited={citation_result.unsupported_claim_count}). "
                 "Declining response."
             )
-            return AnswerResult(
+            result = AnswerResult(
                 question=question,
                 answer=self.prompts.get("decline_response"),
                 citations=[],
@@ -152,8 +257,19 @@ class AnswerGenerator:
                 citation_result=citation_result,
                 declined=True,
             )
+            self._end_trace(
+                trace,
+                result,
+                extra_metadata={
+                    "model": self.llm.model,
+                    "citation_count": 0,
+                    "declined_reason": "invalid_citations",
+                    "insufficient_context": False,
+                },
+            )
+            return result
 
-        return AnswerResult(
+        result = AnswerResult(
             question=question,
             answer=raw_answer,
             citations=citation_result.citations,
@@ -167,6 +283,17 @@ class AnswerGenerator:
                 "chunks_after_rerank": len(chunks),
             },
         )
+        self._end_trace(
+            trace,
+            result,
+            extra_metadata={
+                "model": self.llm.model,
+                "citation_count": len(result.citations),
+                "declined": False,
+                "insufficient_context": False,
+            },
+        )
+        return result
 
     # ------------------------------------------------------------------ #
     #  Streaming variant                                                   #
@@ -231,3 +358,31 @@ class AnswerGenerator:
             citation_result=CitationResult(is_valid=False, answer="", declined=True),
             declined=True,
         )
+
+    def _end_trace(
+        self,
+        trace,
+        result: AnswerResult,
+        extra_metadata: dict[str, Any] | None = None,
+    ) -> None:
+        """Update the Langfuse trace with the final answer and metadata."""
+        if trace is None:
+            return
+        try:
+            metadata = {"declined": result.declined}
+            if extra_metadata:
+                metadata.update(extra_metadata)
+            trace.update(output=result.answer, metadata=metadata)
+        except Exception:
+            pass
+
+    @staticmethod
+    def _estimate_tokens(text: str) -> int | None:
+        """Return cl100k_base token count for text, or None if tiktoken unavailable."""
+        try:
+            import tiktoken
+
+            enc = tiktoken.get_encoding("cl100k_base")
+            return len(enc.encode(text))
+        except Exception:
+            return None

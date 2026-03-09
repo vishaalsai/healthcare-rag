@@ -9,7 +9,6 @@ Outputs a JSON results file and an exit code suitable for CI/CD gating.
 from __future__ import annotations
 
 import json
-import os
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path

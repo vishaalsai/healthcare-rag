@@ -10,7 +10,6 @@ Requires the FastAPI backend running on localhost:8000.
 from __future__ import annotations
 
 import sys
-from pathlib import Path
 
 # ── stdout encoding (Windows cp1252 → UTF-8) ─────────────────────────────────
 if hasattr(sys.stdout, "reconfigure"):
@@ -249,7 +248,8 @@ def render_citations(citations: list[dict]) -> None:
     """Render a styled reference block inside a chat message."""
     if not citations:
         return
-    with st.expander(f"📚 {len(citations)} source{'s' if len(citations) != 1 else ''}", expanded=True):
+    label = f"📚 {len(citations)} source{'s' if len(citations) != 1 else ''}"
+    with st.expander(label, expanded=True):
         for c in citations:
             st.markdown(
                 f"""
@@ -415,7 +415,8 @@ st.markdown(
     """
 <div class="hero-banner">
   <h1>🏥 Healthcare RAG Assistant</h1>
-  <p>Evidence-based answers from WHO · CDC · NIH clinical guidelines — with paragraph-level citations</p>
+  <p>Evidence-based answers from WHO · CDC · NIH clinical guidelines
+  — with paragraph-level citations</p>
 </div>
 """,
     unsafe_allow_html=True,
@@ -485,7 +486,10 @@ if prompt := st.chat_input("Ask a clinical question...", key="chat_input"):
                 )
 
             except requests.Timeout:
-                err = "**Request timed out.** The model may be processing a complex query. Please try again."
+                err = (
+                    "**Request timed out.** The model may be processing"
+                    " a complex query. Please try again."
+                )
                 st.error(err)
                 st.session_state.messages.append(
                     {"role": "assistant", "content": err, "citations": [], "declined": False}
