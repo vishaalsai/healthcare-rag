@@ -20,8 +20,11 @@ from uuid import uuid4
 
 import yaml
 from dotenv import load_dotenv
+from dataclasses import asdict
+
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
 
 from loguru import logger
 from pydantic import BaseModel, Field
@@ -255,6 +258,215 @@ async def query(request: QueryRequest, req: Request) -> QueryResponse:
         trace_id=trace_id,
         metadata=result.metadata or {},
     )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  Metrics endpoints
+# ─────────────────────────────────────────────────────────────────────────────
+
+@app.get(
+    "/metrics",
+    summary="Aggregated RAG metrics",
+    tags=["Observability"],
+)
+async def metrics(hours: int = 24):
+    """
+    Returns aggregated metrics over the last `hours` window.
+    Pulls data from Langfuse traces. Returns zeroed values when
+    Langfuse is not configured.
+    """
+    from src.observability.metrics import MetricsCollector
+    collector = MetricsCollector()
+    summary = collector.get_metrics(hours=hours)
+    return asdict(summary)
+
+
+@app.get(
+    "/dashboard",
+    response_class=HTMLResponse,
+    summary="Observability dashboard",
+    tags=["Observability"],
+)
+async def dashboard(hours: int = 24):
+    """
+    Dark-themed HTML dashboard showing aggregated metrics and
+    the 20 most recent traces. Auto-refreshes every 30 seconds.
+    """
+    from src.observability.metrics import MetricsCollector
+    from src.observability.tracer import get_tracer
+    collector = MetricsCollector()
+    tracer_configured = get_tracer() is not None
+    summary = collector.get_metrics(hours=hours)
+    traces = collector.get_recent_traces(limit=20)
+    return _build_dashboard_html(summary, traces, tracer_configured)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  Dashboard HTML builder
+# ─────────────────────────────────────────────────────────────────────────────
+
+_NOT_CONFIGURED_HTML = """<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8">
+<title>Healthcare RAG — Dashboard</title>
+<style>
+body{font-family:sans-serif;background:#0f1117;color:#e0e0e0;
+display:flex;align-items:center;justify-content:center;
+min-height:100vh;margin:0;}
+.box{background:#1e1e2e;padding:40px;border-radius:12px;
+text-align:center;max-width:480px;}
+h2{color:#fff;margin-bottom:12px;}
+p{color:#888;line-height:1.6;}
+code{background:#2a2a3e;padding:2px 6px;border-radius:4px;
+color:#7c9fff;font-size:0.9rem;}
+</style></head>
+<body><div class="box">
+<h2>🔌 Tracing Not Configured</h2>
+<p>Set your Langfuse keys in <code>.env</code> to enable
+the observability dashboard.</p>
+<p style="margin-top:16px;">
+<code>LANGFUSE_PUBLIC_KEY</code><br>
+<code>LANGFUSE_SECRET_KEY</code><br>
+<code>LANGFUSE_HOST</code>
+</p>
+</div></body></html>"""
+
+_DASHBOARD_CSS = """\
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  background:#0f1117;color:#e0e0e0;
+  min-height:100vh;padding:24px;
+}
+h1{color:#fff;font-size:1.6rem;}
+.subtitle{color:#666;font-size:0.9rem;margin:4px 0 28px;}
+.cards{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:16px;margin-bottom:32px;
+}
+.card{
+  background:#1e1e2e;border-radius:10px;
+  padding:20px;border:1px solid #2a2a3e;
+}
+.card-value{font-size:2rem;font-weight:700;color:#7c9fff;}
+.card-label{font-size:0.8rem;color:#666;margin-top:6px;
+  text-transform:uppercase;letter-spacing:.05em;}
+h2{color:#ccc;font-size:1rem;margin-bottom:12px;
+  text-transform:uppercase;letter-spacing:.06em;}
+.tbl-wrap{background:#1e1e2e;border-radius:10px;
+  overflow:hidden;border:1px solid #2a2a3e;}
+table{width:100%;border-collapse:collapse;}
+th{
+  background:#16162a;color:#666;font-size:0.75rem;
+  text-transform:uppercase;letter-spacing:.06em;
+  padding:12px 14px;text-align:left;
+}
+td{padding:11px 14px;border-top:1px solid #2a2a3e;
+  font-size:0.875rem;}
+tr:hover td{background:#1a1a2e;}
+.badge{
+  display:inline-block;padding:3px 10px;
+  border-radius:12px;font-size:0.75rem;font-weight:600;
+}
+.badge-success{background:#0d2e0d;color:#4caf50;}
+.badge-warn{background:#2e1e00;color:#ff9800;}
+.badge-fail{background:#2e0d0d;color:#f44336;}
+.footer{color:#444;font-size:0.78rem;margin-top:20px;}
+</style>"""
+
+
+def _status_badge(status: str) -> str:
+    if status == "success":
+        return '<span class="badge badge-success">success</span>'
+    if status == "insufficient_context":
+        return (
+            '<span class="badge badge-warn">'
+            'insufficient_context</span>'
+        )
+    return '<span class="badge badge-fail">declined</span>'
+
+
+def _build_dashboard_html(
+    summary,
+    traces: list[dict],
+    tracer_configured: bool,
+) -> str:
+    """Render the full observability dashboard as an HTML string."""
+    if not tracer_configured:
+        return _NOT_CONFIGURED_HTML
+
+    h = summary.period_hours
+    cards = [
+        ("Total Requests", str(summary.total_requests)),
+        ("Success Rate", f"{summary.success_rate * 100:.1f}%"),
+        ("P95 Latency", f"{summary.p95_latency_ms:.0f} ms"),
+        ("Avg Cost / Request", f"${summary.avg_cost_usd:.5f}"),
+        ("Citation Coverage", f"{summary.citation_coverage * 100:.1f}%"),
+        (f"Total Cost (last {h}h)", f"${summary.total_cost_usd:.4f}"),
+    ]
+
+    cards_html = "".join(
+        f'<div class="card">'
+        f'<div class="card-value">{val}</div>'
+        f'<div class="card-label">{label}</div>'
+        f'</div>'
+        for label, val in cards
+    )
+
+    rows_html = ""
+    for t in traces:
+        ts = t["timestamp"][:19].replace("T", " ") if t["timestamp"] else "—"
+        badge = _status_badge(t["status"])
+        rows_html += (
+            f"<tr>"
+            f"<td>{ts}</td>"
+            f"<td>{t['query']}</td>"
+            f"<td>{badge}</td>"
+            f"<td>{t['latency_ms']:.0f} ms</td>"
+            f"<td>${t['cost_usd']:.5f}</td>"
+            f"<td>{t['citation_count']}</td>"
+            f"</tr>"
+        )
+
+    if not rows_html:
+        rows_html = (
+            '<tr><td colspan="6" style="text-align:center;color:#555;">'
+            'No traces found in this window.</td></tr>'
+        )
+
+    updated = summary.computed_at[:19].replace("T", " ") + " UTC"
+
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="refresh" content="30">
+<title>Healthcare RAG — Dashboard</title>
+{_DASHBOARD_CSS}
+</head>
+<body>
+<h1>🏥 Healthcare RAG — Observability Dashboard</h1>
+<p class="subtitle">Metrics over the last {h} hours
+&nbsp;·&nbsp; auto-refresh every 30 s</p>
+
+<div class="cards">{cards_html}</div>
+
+<h2>Recent Traces (last 20)</h2>
+<div class="tbl-wrap">
+<table>
+<thead><tr>
+<th>Timestamp</th><th>Query</th><th>Status</th>
+<th>Latency</th><th>Cost</th><th>Citations</th>
+</tr></thead>
+<tbody>{rows_html}</tbody>
+</table>
+</div>
+
+<p class="footer">Last updated: {updated}</p>
+</body>
+</html>"""
 
 
 # ─────────────────────────────────────────────────────────────────────────────
